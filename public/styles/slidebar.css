@@ -1,127 +1,269 @@
-.main-container {
-    display: flex;
-    width: 100%;
-    height: 100vh;
-}
-
-/* Panel izquierdo */
 .sidebar {
     width: 250px;
-    background-color: #1a1a1a;
-    border-right: 1px solid #333;
-    padding: 20px;
-    box-sizing: border-box;
-    color: #f1f1f1;
+    background-color: #f0f0f0;
+    padding: 1.5rem 2rem 2rem 2rem;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 1.05rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 56px);
+    overflow-y: hidden;
 }
 
 .sidebar h2 {
-    font-size: 18px;
-    margin-bottom: 15px;
-    color: #f1c40f;
-}
-
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px 0;
-    overflow-y: auto;
-    max-height: 70vh;
-}
-
-.sidebar ul li {
-    background-color: #2a2a2a;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.sidebar ul li:hover {
-    background-color: #444;
+    color: var(--primary);
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1.4rem;
+    margin: 0 0 2rem 0;
+    text-align: center;
+    font-weight: 700;
 }
 
 #nueva-conversacion {
     width: 100%;
-    padding: 10px;
-    background-color: #f1c40f;
-    color: #000;
-    font-weight: bold;
+    padding: 0.8rem;
+    background: var(--primary);
+    color: var(--white);
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
+    margin-bottom: 2rem;
     cursor: pointer;
+    font-weight: 500;
+    font-size: 1.05rem;
 }
 
-/* Media Queries para hacerlo responsive */
-
-/* Pantallas pequeñas (móviles) */
-@media screen and (max-width: 600px) {
-    .main-container {
-        flex-direction: column; /* Apilar la barra lateral y el chat */
-    }
-
-    .sidebar {
-        width: 100%; /* Barra lateral ocupa todo el ancho */
-        padding: 10px;
-        border-right: none; /* Eliminar borde */
-        border-bottom: 1px solid #333; /* Agregar borde en la parte inferior */
-        box-sizing: border-box;
-    }
-
-    .sidebar h2 {
-        font-size: 16px; /* Reducir tamaño de texto en la barra lateral */
-    }
-
-    .sidebar ul li {
-        font-size: 14px; /* Reducir tamaño de los elementos */
-    }
-
-    #nueva-conversacion {
-        padding: 12px;
-        font-size: 16px; /* Aumentar el tamaño de texto para móviles */
-    }
-}
-
-/* Pantallas medianas (tabletas) */
-@media screen and (max-width: 768px) {
-    .sidebar {
-        width: 200px; /* Reducir el ancho de la barra lateral en tabletas */
-    }
-
-    .sidebar h2 {
-        font-size: 17px; /* Ajustar tamaño del título */
-    }
-
-    .sidebar ul li {
-        font-size: 15px; /* Ajustar tamaño de los elementos */
-    }
-
-    #nueva-conversacion {
-        padding: 10px;
-        font-size: 15px; /* Ajustar tamaño de los botones */
-    }
-}
-/* Botón de toggle */
-.toggle-historial {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    z-index: 999;
-    background-color: #f1c40f;
-    color: #000;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 5px;
-    font-weight: bold;
+.file-label {
+    display: inline-block;
+    background: var(--primary);
+    color: var(--white);
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
     cursor: pointer;
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    transition: background 0.2s;
 }
 
-/* Cuando el historial está oculto */
-.sidebar.oculto {
+.file-label:hover {
+    background: var(--primary-dark);
+}
+
+#archivo-input {
     display: none;
 }
 
-.chat-container.expandido {
-    max-width: none;
+.file-preview, .uploaded-files {
+    margin-top: 1rem;
+}
+
+.file-preview h3, .uploaded-files h3 {
+    font-size: 1rem;
+    color: var(--primary);
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+}
+
+#file-preview-list, #uploaded-files-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 6.2rem;
+    overflow-y: auto;
+}
+
+#file-preview-list::-webkit-scrollbar, #uploaded-files-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#file-preview-list::-webkit-scrollbar-track, #uploaded-files-list::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+#file-preview-list::-webkit-scrollbar-thumb, #uploaded-files-list::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+#file-preview-list::-webkit-scrollbar-thumb:hover, #uploaded-files-list::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+#file-preview-list li, #uploaded-files-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+#file-preview-list li .file-name, #uploaded-files-list li .file-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 0.5rem;
+}
+
+#file-preview-list li .file-order, #uploaded-files-list li .file-order {
+    width: 30px;
+    text-align: center;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+#file-preview-list li .file-remove {
+    background: #e74c3c;
+    color: var(--white);
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+#file-preview-list li .file-remove:hover {
+    background: #c0392b;
+}
+
+#subir-archivo {
     width: 100%;
-    margin-left: 0;
+    padding: 0.8rem;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: background 0.2s;
+}
+
+#subir-archivo:hover {
+    background: var(--primary-dark);
+}
+
+#historial-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 356px);
+}
+
+#historial-lista::-webkit-scrollbar {
+    width: 8px;
+}
+
+#historial-lista::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+#historial-lista::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+#historial-lista::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+.conversacion-item {
+    padding: 0.8rem;
+    color: var(--text-dark);
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.conversacion-item:hover {
+    background-color: var(--primary-light);
+    color: var(--white);
+}
+
+body.dark-mode .conversacion-item {
+    color: var(--text-dark);
+}
+
+body.dark-mode .conversacion-item:hover {
+    background-color: var(--primary);
+}
+
+body.dark-mode .file-label {
+    background: var(--primary-light);
+}
+
+body.dark-mode .file-preview h3, body.dark-mode .uploaded-files h3 {
+    color: var(--primary-light);
+}
+
+body.dark-mode #file-preview-list li, body.dark-mode #uploaded-files-list li {
+    background: #333;
+    color: var(--text-dark);
+}
+
+body.dark-mode #subir-archivo {
+    background: var(--primary-light);
+}
+
+body.dark-mode #subir-archivo:hover {
+    background: var(--primary);
+}
+
+body.dark-mode #file-preview-list::-webkit-scrollbar-track, 
+body.dark-mode #uploaded-files-list::-webkit-scrollbar-track {
+    background: #2a2a2a;
+}
+
+body.dark-mode #file-preview-list::-webkit-scrollbar-thumb, 
+body.dark-mode #uploaded-files-list::-webkit-scrollbar-thumb {
+    background: var(--primary);
+}
+
+body.dark-mode #file-preview-list::-webkit-scrollbar-thumb:hover, 
+body.dark-mode #uploaded-files-list::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-light);
+}
+
+body.dark-mode #historial-lista::-webkit-scrollbar-track {
+    background: #2a2a2a;
+}
+
+body.dark-mode #historial-lista::-webkit-scrollbar-thumb {
+    background: var(--primary);
+}
+
+body.dark-mode #historial-lista::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-light);
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        font-size: 1rem;
+        padding: 0.75rem 1.5rem 1.5rem 1.5rem;
+        max-height: none;
+    }
+
+    .sidebar h2 {
+        font-size: 1.3rem;
+        margin: 0 0 1.5rem 0;
+    }
+
+    #nueva-conversacion, .file-upload-container label, #subir-archivo, .conversacion-item {
+        font-size: 1rem;
+    }
+
+    #historial-lista {
+        max-height: 300px;
+    }
 }

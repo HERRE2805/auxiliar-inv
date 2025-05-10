@@ -3,53 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚖️ Asistente Jurídico</title>
+    <title>Asistente Jurídico</title>
     <link rel="stylesheet" href="styles/estilos.css">
     <link rel="stylesheet" href="styles/slidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="main-container">
-        <!-- Panel izquierdo: historial -->
         <aside class="sidebar">
             <h2>📂 Conversaciones</h2>
-            <ul id="historial-lista"></ul>
+            
+            <label for="archivo-input" class="file-label">📁 Seleccionar archivos</label>
+            <input type="file" id="archivo-input" multiple accept=".pdf,.doc,.docx,.txt">
+            <div class="file-preview">
+                <h3>Archivos seleccionados</h3>
+                <ul id="file-preview-list"></ul>
+            </div>
+            <button id="subir-archivo" class="secondary-button">📤 Subir archivos</button>
+            <div class="uploaded-files">
+                <h3>Archivos subidos</h3>
+                <ul id="uploaded-files-list"></ul>
+            </div>
+            
             <button id="nueva-conversacion">➕ Nueva conversación</button>
             
-            <!-- Zona de subida de archivos -->
-            <div style="margin-top: 20px;">
-                <input type="file" id="archivo-input" multiple>
-                <button id="subir-archivo">📤 Subir Archivos</button>
-            </div>
+            <ul id="historial-lista"></ul>
         </aside>
 
-        <!-- Panel derecho: chat -->
         <div class="chat-container">
             <header>
-                <h1>⚖️ Asistente Jurídico Virtual</h1>
+                <button id="toggle-theme" title="Cambiar tema">🌙</button>
+                <h1>Asistente Jurídico Virtual</h1>
                 <p class="subtitulo">Consulta profesional en lenguaje legal</p>
             </header>
+            
             <div id="chat-body" class="chat-body"></div>
+            
             <div class="input-container">
                 <input type="text" id="user-input" placeholder="Escribe tu consulta legal...">
                 <button id="send-button">Enviar</button>
                 <button id="export-button">📄 Exportar PDF</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Sección flotante -->
-    <div class="floating-section" id="floatingSection">
-        <button id="toggleFloating">☰</button>
-        <div class="floating-header" id="floatingHeader">
-            <span class="title">Hola mundo</span>
-            <div class="floating-controls">
-                <button id="minimizeBtn">—</button>
-                <button id="closeBtn">✕</button>
-            </div>
-        </div>
-        <div class="floating-content" id="floatingContent">
-            <p>Esta es una sección flotante.</p>
         </div>
     </div>
 
