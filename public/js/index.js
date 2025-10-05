@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const subirBtn = document.getElementById('subir-archivo');
     const archivoInput = document.getElementById('archivo-input');
     const toggleButton = document.getElementById('toggle-theme');
+    const micButton = document.getElementById('mic-button'); // 🎤 Botón de micrófono
 
     // Verificar elementos esenciales
     if (!chatBody) console.error('Error: #chat-body no encontrado en el DOM');
@@ -34,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('marked configurado con opciones GFM');
     }
 
-    const API_KEY = 'API';
+    const API_KEY = 'API_KEY';
 
     let historial = [];
     let conversaciones = [];
@@ -125,8 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isCasualGreeting = ['hola', 'hello', 'hey', 'saludos', 'hi'].some(greeting => userMessage.toLowerCase().includes(greeting));
             const systemPrompt = isCasualGreeting
-                ? 'Eres JurisLibre, un asistente jurídico amigable. Responde de manera breve y cordial a saludos casuales, por ejemplo, "¡Saludos! ¿En qué puedo ayudarte hoy en cuestiones legales?". Usa solo texto plano sin Markdown ni HTML.'
-                : 'Eres JurisLibre, un asistente jurídico profesional de la Universidad Libre - Semilleros de IA Facultad de Derecho y Semillero Sensorama Ingeniería de Sistemas - 2024. Responde con formalidad, claridad y lenguaje técnico o legal según la consulta. Estructura todas tus respuestas exclusivamente en Markdown puro. Usa negritas (**texto**), listas con guiones (- Item), y saltos de línea para párrafos. No uses HTML (<b>, <p>, etc.), texto plano sin formato, ni ningún otro formato. Ejemplo: **Título**\n\n- **Punto 1**: Descripción.\n- **Punto 2**: Descripción.\n\nPárrafo adicional.';
+                ? 'Eres JurisLibre, un asistente jurídico amigable. Responde de manera breve y cordial a saludos casuales.'
+                : 'Eres JurisLibre, un asistente jurídico profesional. Responde con formalidad, claridad y lenguaje técnico o legal. Usa exclusivamente Markdown.';
 
             console.log('Enviando mensaje a chat/completions con prompt:', systemPrompt);
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -169,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let sourcesHTML = '';
 
         if (fileIds.length > 0) {
-            console.log('Obteniendo nombres de archivos para fileIds:', fileIds);
             try {
                 const nombres = await Promise.all(fileIds.map(async (fileId) => {
                     try {
@@ -178,15 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 'Authorization': `Bearer ${API_KEY}`
                             }
                         });
-                        if (!res.ok) {
-                            console.error(`Error al obtener archivo ${fileId}: ${res.status} ${res.statusText}`);
-                            return fileId;
-                        }
+                        if (!res.ok) return fileId;
                         const data = await res.json();
-                        const cleanFilename = (data.filename || fileId).replace(/^_+|_+$/g, '');
-                        return cleanFilename;
-                    } catch (error) {
-                        console.error(`Error al obtener nombre del archivo ${fileId}:`, error);
+                        return (data.filename || fileId).replace(/^_+|_+$/g, '');
+                    } catch {
                         return fileId;
                     }
                 }));
@@ -202,8 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${nombres.length > 3 ? '<span class="show-more">Ver más</span>' : ''}
                     </div>
                 `;
-            } catch (error) {
-                console.error('Error al generar fuentes:', error);
+            } catch {
                 sourcesHTML = '<div class="message-sources"><p>Error al cargar fuentes.</p></div>';
             }
         }
@@ -211,15 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let formattedText = texto;
         try {
             if (window.marked && window.DOMPurify) {
-                console.log('Procesando markdown para:', texto);
                 formattedText = window.DOMPurify.sanitize(window.marked.parse(texto));
-                console.log('Markdown procesado:', formattedText);
             } else {
-                console.warn('marked o DOMPurify no disponibles, usando texto plano');
                 formattedText = texto.replace(/\\_/g, '_');
             }
-        } catch (error) {
-            console.error('Error al procesar markdown:', error);
+        } catch {
             formattedText = texto.replace(/\\_/g, '_');
         }
 
@@ -232,62 +222,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chatBody) {
             chatBody.appendChild(mensaje);
             chatBody.scrollTop = chatBody.scrollHeight;
-        } else {
-            console.error('Error: chatBody no está definido');
-            throw new Error('chatBody no está definido');
         }
 
         if (fileIds.length > 3) {
             const showMore = mensaje.querySelector('.show-more');
             if (showMore) {
                 showMore.addEventListener('click', () => {
-                    const hiddenItems = mensaje.querySelectorAll('.message-sources li.hidden');
-                    hiddenItems.forEach(item => item.classList.remove('hidden'));
+                    mensaje.querySelectorAll('.message-sources li.hidden')
+                        .forEach(item => item.classList.remove('hidden'));
                     showMore.remove();
                 });
             }
         }
 
-        const mensajeObj = { origen, texto, hora };
-        historial.push(mensajeObj);
+        historial.push({ origen, texto, hora });
 
         if (currentConversationIndex >= 0 && conversaciones[currentConversationIndex]) {
             conversaciones[currentConversationIndex].mensajes = [...historial];
-            try {
-                localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-            } catch (error) {
-                console.error('Error al guardar conversaciones en localStorage:', error);
-            }
+            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
         }
 
-        try {
-            localStorage.setItem('historial', JSON.stringify(historial));
-        } catch (error) {
-            console.error('Error al guardar historial en localStorage:', error);
-        }
+        localStorage.setItem('historial', JSON.stringify(historial));
     }
 
     async function loadUploadedFiles() {
         console.log('Cargando archivos subidos...');
         const uploadedFilesList = document.getElementById('uploaded-files-list');
-        if (!uploadedFilesList) {
-            console.error('Error: #uploaded-files-list no encontrado');
-            return;
-        }
+        if (!uploadedFilesList) return;
         uploadedFilesList.innerHTML = '';
 
         try {
             const response = await fetch('https://api.openai.com/v1/files', {
-                headers: {
-                    'Authorization': `Bearer ${API_KEY}`
-                }
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error(`Error al cargar archivos desde /v1/files: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-                alert('No se pudieron cargar los archivos subidos. Verifica la API Key o la configuración de OpenAI.');
-                return;
-            }
+            if (!response.ok) return;
             const data = await response.json();
             const files = data.data.filter(file => file.purpose === 'assistants');
             files.forEach((file, index) => {
@@ -298,10 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 uploadedFilesList.appendChild(li);
             });
-            console.log('Archivos subidos cargados (/v1/files):', files.map(f => f.filename));
         } catch (error) {
             console.error('Error al cargar archivos subidos:', error);
-            alert('No se pudieron cargar los archivos subidos. Verifica la conexión o la API Key.');
         }
     }
 
@@ -310,61 +276,26 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const datosConversaciones = localStorage.getItem('conversaciones');
             if (datosConversaciones) {
-                conversaciones = JSON.parse(datosConversaciones);
-                conversaciones = conversaciones.filter(conv => conv && conv.mensajes && conv.mensajes.length > 0);
-                conversaciones = conversaciones.map((conv, index) => ({
-                    id: index + 1,
-                    mensajes: conv.mensajes
-                }));
+                conversaciones = JSON.parse(datosConversaciones).filter(conv => conv?.mensajes?.length);
                 chatCounter = conversaciones.length;
-                try {
-                    localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                    localStorage.setItem('chatCounter', chatCounter);
-                } catch (error) {
-                    console.error('Error al guardar conversaciones o chatCounter en localStorage:', error);
-                }
             }
-        } catch (error) {
-            console.error('Error al cargar conversaciones desde localStorage:', error);
+        } catch {
             conversaciones = [];
             chatCounter = 0;
         }
 
         try {
             const datosHistorial = localStorage.getItem('historial');
-            if (datosHistorial) {
-                historial = JSON.parse(datosHistorial);
-            }
-        } catch (error) {
-            console.error('Error al cargar historial desde localStorage:', error);
+            if (datosHistorial) historial = JSON.parse(datosHistorial);
+        } catch {
             historial = [];
         }
 
-        try {
-            const storedIndex = parseInt(localStorage.getItem('currentConversationIndex')) || -1;
-            if (storedIndex >= 0 && storedIndex < conversaciones.length) {
-                currentConversationIndex = storedIndex;
-            } else {
-                currentConversationIndex = conversaciones.length > 0 ? 0 : -1;
-            }
-            localStorage.setItem('currentConversationIndex', currentConversationIndex);
-        } catch (error) {
-            console.error('Error al cargar currentConversationIndex desde localStorage:', error);
-            currentConversationIndex = -1;
-        }
-
-        if (conversaciones.length === 0 && chatCounter === 0) {
+        if (conversaciones.length === 0) {
             chatCounter = 1;
             conversaciones.push({ id: chatCounter, mensajes: [] });
             currentConversationIndex = 0;
-            try {
-                localStorage.setItem('chatCounter', chatCounter);
-                localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                localStorage.setItem('currentConversationIndex', currentConversationIndex);
-                localStorage.setItem('historial', JSON.stringify(historial));
-            } catch (error) {
-                console.error('Error al inicializar localStorage:', error);
-            }
+            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
         }
 
         if (historialLista) {
@@ -375,17 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.classList.add('conversacion-item');
                 item.dataset.index = index;
                 item.addEventListener('click', () => {
-                    if (currentConversationIndex >= 0 && historial.length > 0) {
+                    if (currentConversationIndex >= 0) {
                         conversaciones[currentConversationIndex].mensajes = [...historial];
-                        try {
-                            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                        } catch (error) {
-                            console.error('Error al guardar conversaciones en localStorage:', error);
-                        }
+                        localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
                     }
-
                     currentConversationIndex = index;
-                    localStorage.setItem('currentConversationIndex', currentConversationIndex);
                     historial = [...conversaciones[index].mensajes];
                     localStorage.setItem('historial', JSON.stringify(historial));
 
@@ -399,8 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (window.marked && window.DOMPurify) {
                                     formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
                                 }
-                            } catch (error) {
-                                console.error('Error al procesar markdown en historial:', error);
+                            } catch {
                                 formattedText = m.texto.replace(/\\_/g, '_');
                             }
                             mensaje.innerHTML = `
@@ -415,246 +339,203 @@ document.addEventListener('DOMContentLoaded', () => {
                 historialLista.appendChild(item);
             });
         }
+    }
 
-        if (currentConversationIndex >= 0 && conversaciones[currentConversationIndex]) {
-            historial = [...conversaciones[currentConversationIndex].mensajes];
-            try {
-                localStorage.setItem('historial', JSON.stringify(historial));
-            } catch (error) {
-                console.error('Error al guardar historial en localStorage:', error);
-            }
-            if (chatBody) {
-                chatBody.innerHTML = '';
-                historial.forEach(m => {
-                    const mensaje = document.createElement('div');
-                    mensaje.classList.add('message');
-                    let formattedText = m.texto;
-                    try {
-                        if (window.marked && window.DOMPurify) {
-                            formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
-                        }
-                    } catch (error) {
-                        console.error('Error al procesar markdown en historial:', error);
-                        formattedText = m.texto.replace(/\\_/g, '_');
-                    }
-                    mensaje.innerHTML = `
-                        <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
-                        <span><strong>${m.origen}:</strong> ${formattedText}</span>
-                    `;
-                    chatBody.appendChild(mensaje);
-                });
-                chatBody.scrollTop = chatBody.scrollHeight;
-            }
+    function crearNuevaConversacion() {
+        if (currentConversationIndex >= 0) {
+            conversaciones[currentConversationIndex].mensajes = [...historial];
+            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
         }
 
-        loadUploadedFiles();
-    }
+        chatCounter++;
+        const nuevaConversacion = { id: chatCounter, mensajes: [] };
+        conversaciones.push(nuevaConversacion);
+        currentConversationIndex = conversaciones.length - 1;
+        historial = [];
+        localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
+        localStorage.setItem('chatCounter', chatCounter);
+        localStorage.setItem('currentConversationIndex', currentConversationIndex);
+        localStorage.setItem('historial', JSON.stringify(historial));
 
-    if (nuevaConversacionBtn) {
-        nuevaConversacionBtn.addEventListener('click', () => {
-            console.log('Clic en #nueva-conversacion', { chatCounter, currentConversationIndex, conversacionesLength: conversaciones.length });
+        if (chatBody) chatBody.innerHTML = '';
 
-            if (currentConversationIndex >= 0 && historial.length > 0 && conversaciones[currentConversationIndex]) {
-                conversaciones[currentConversationIndex].mensajes = [...historial];
-                try {
-                    localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                } catch (error) {
-                    console.error('Error al guardar conversaciones en localStorage:', error);
-                }
-            }
-
-            chatCounter++;
-            try {
-                localStorage.setItem('chatCounter', chatCounter);
-            } catch (error) {
-                console.error('Error al guardar chatCounter en localStorage:', error);
-            }
-            const nombre = `Conversación ${chatCounter}`;
-            conversaciones.push({ id: chatCounter, mensajes: [] });
-            const newIndex = conversaciones.length - 1;
-
-            if (historialLista) {
-                const item = document.createElement('li');
-                item.textContent = nombre;
-                item.classList.add('conversacion-item');
-                item.dataset.index = newIndex;
-                item.addEventListener('click', () => {
-                    if (currentConversationIndex >= 0 && historial.length > 0) {
-                        conversaciones[currentConversationIndex].mensajes = [...historial];
-                        try {
-                            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                        } catch (error) {
-                            console.error('Error al guardar conversaciones en localStorage:', error);
-                        }
-                    }
-
-                    currentConversationIndex = newIndex;
-                    try {
-                        localStorage.setItem('currentConversationIndex', currentConversationIndex);
-                    } catch (error) {
-                        console.error('Error al guardar currentConversationIndex en localStorage:', error);
-                    }
-                    historial = [...conversaciones[newIndex].mensajes];
-                    try {
-                        localStorage.setItem('historial', JSON.stringify(historial));
-                    } catch (error) {
-                        console.error('Error al guardar historial en localStorage:', error);
-                    }
-
-                    if (chatBody) {
-                        chatBody.innerHTML = '';
-                        historial.forEach(m => {
-                            const mensaje = document.createElement('div');
-                            mensaje.classList.add('message');
-                            let formattedText = m.texto;
-                            try {
-                                if (window.marked && window.DOMPurify) {
-                                    formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
-                                }
-                            } catch (error) {
-                                console.error('Error al procesar markdown en historial:', error);
-                                formattedText = m.texto.replace(/\\_/g, '_');
-                            }
-                            mensaje.innerHTML = `
-                                <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
-                                <span><strong>${m.origen}:</strong> ${formattedText}</span>
-                            `;
-                            chatBody.appendChild(mensaje);
-                        });
-                        chatBody.scrollTop = chatBody.scrollHeight;
-                    }
-                });
-                historialLista.appendChild(item);
-                historialLista.scrollTop = historialLista.scrollHeight;
-            }
-
-            currentConversationIndex = newIndex;
-            try {
-                localStorage.setItem('currentConversationIndex', currentConversationIndex);
-            } catch (error) {
-                console.error('Error al guardar currentConversationIndex en localStorage:', error);
-            }
-            historial = [];
-            try {
+        if (historialLista) {
+            const item = document.createElement('li');
+            item.textContent = `Conversación ${nuevaConversacion.id}`;
+            item.classList.add('conversacion-item');
+            item.dataset.index = currentConversationIndex;
+            item.addEventListener('click', () => {
+                currentConversationIndex = parseInt(item.dataset.index);
+                historial = [...conversaciones[currentConversationIndex].mensajes];
                 localStorage.setItem('historial', JSON.stringify(historial));
-            } catch (error) {
-                console.error('Error al guardar historial en localStorage:', error);
-            }
-            if (chatBody) {
-                chatBody.innerHTML = '';
-            }
-            userInput.value = '';
-        });
-    }
 
-    if (exportButton) {
-        exportButton.addEventListener('click', () => {
-            if (historial.length === 0) return;
-
-            const contenido = historial.map(m => `${m.origen} [${m.hora}]: ${m.texto}`).join('\n\n');
-            const blob = new Blob([contenido], { type: 'text/plain' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'conversacion_juridica.txt';
-            link.click();
-        });
-    }
-
-    if (sendButton) {
-        sendButton.addEventListener('click', sendMessage);
-    }
-    if (userInput) {
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    }
-
-    if (subirBtn) {
-        subirBtn.addEventListener('click', async () => {
-            if (selectedFiles.length === 0) {
-                alert('Selecciona al menos un archivo.');
-                return;
-            }
-
-            console.log('Subiendo archivos:', selectedFiles.map(f => f.name));
-            for (let archivo of selectedFiles) {
-                try {
-                    const formData = new FormData();
-                    formData.append("file", archivo);
-                    formData.append("purpose", "assistants");
-
-                    const fileUploadRes = await fetch("https://api.openai.com/v1/files", {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${API_KEY}`
-                        },
-                        body: formData
+                if (chatBody) {
+                    chatBody.innerHTML = '';
+                    historial.forEach(m => {
+                        const mensaje = document.createElement('div');
+                        mensaje.classList.add('message');
+                        let formattedText = m.texto;
+                        try {
+                            if (window.marked && window.DOMPurify) {
+                                formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
+                            }
+                        } catch {
+                            formattedText = m.texto.replace(/\\_/g, '_');
+                        }
+                        mensaje.innerHTML = `
+                            <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
+                            <span><strong>${m.origen}:</strong> ${formattedText}</span>
+                        `;
+                        chatBody.appendChild(mensaje);
                     });
-                    if (!fileUploadRes.ok) {
-                        const errorData = await fileUploadRes.json();
-                        console.error(`Error al subir archivo ${archivo.name}: ${fileUploadRes.status} ${fileUploadRes.statusText} - ${JSON.stringify(errorData)}`);
-                        alert(`❌ Error al subir ${archivo.name}`);
-                        continue;
-                    }
-                    const data = await fileUploadRes.json();
-                    console.log(`✅ Archivo subido: ${data.filename} (${data.id})`);
-                    alert(`✅ Archivo subido correctamente: ${data.filename}`);
-                } catch (error) {
-                    console.error('Error al subir archivo:', error);
-                    alert(`❌ Error al subir ${archivo.name}`);
+                    chatBody.scrollTop = chatBody.scrollHeight;
                 }
+            });
+            historialLista.appendChild(item);
+        }
+    }
+
+    function exportChatToPDF() {
+        console.log('Exportando chat a PDF...');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        let y = 10;
+        doc.setFontSize(12);
+        historial.forEach(mensaje => {
+            const text = `${mensaje.hora} - ${mensaje.origen}: ${mensaje.texto.replace(/\\_/g, '_')}`;
+            const splitText = doc.splitTextToSize(text, 180);
+            doc.text(splitText, 10, y);
+            y += splitText.length * 10;
+            if (y > 280) {
+                doc.addPage();
+                y = 10;
             }
-
-            selectedFiles = [];
-            archivoInput.value = '';
-            updateFilePreview();
-            await loadUploadedFiles();
         });
+
+        doc.save('chat.pdf');
     }
 
-    if (archivoInput) {
-        archivoInput.addEventListener('change', () => {
-            const newFiles = Array.from(archivoInput.files);
-            selectedFiles = [...selectedFiles, ...newFiles];
-            updateFilePreview();
-        });
-    }
-
-    function updateFilePreview() {
-        const filePreviewList = document.getElementById('file-preview-list');
-        if (!filePreviewList) {
-            console.error('Error: #file-preview-list no encontrado');
+    function uploadFiles() {
+        console.log('Subiendo archivos seleccionados...');
+        const previewList = document.getElementById('file-preview-list');
+        if (!selectedFiles || selectedFiles.length === 0) {
+            console.warn('No hay archivos seleccionados para subir');
             return;
         }
-        filePreviewList.innerHTML = '';
 
-        selectedFiles.forEach((file, index) => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span class="file-order">${index + 1}</span>
-                <span class="file-name">${file.name.replace(/^_+|_+$/g, '')}</span>
-                <button class="file-remove" data-index="${index}">🗑️</button>
-            `;
-            filePreviewList.appendChild(li);
+        Array.from(selectedFiles).forEach(async (file, index) => {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('purpose', 'assistants');
 
-            li.querySelector('.file-remove').addEventListener('click', () => {
-                selectedFiles.splice(index, 1);
-                updateFilePreview();
+                console.log(`Subiendo archivo ${index + 1}: ${file.name}`);
+
+                const response = await fetch('https://api.openai.com/v1/files', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error al subir archivo ${file.name}: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+                }
+                const data = await response.json();
+                console.log(`Archivo ${file.name} subido con ID: ${data.id}`);
+
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                if (previewList) {
+                    previewList.appendChild(li);
+                }
+
+                loadUploadedFiles();
+            } catch (error) {
+                console.error(`Error al subir archivo ${file.name}:`, error);
+            }
+        });
+        selectedFiles = [];
+        if (previewList) previewList.innerHTML = '';
+    }
+
+    // 🎤 Reconocimiento de voz con toggle
+    let recognition;
+    let escuchando = false;
+
+    function toggleReconocimientoVoz() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert('Tu navegador no soporta reconocimiento de voz.');
+            return;
+        }
+
+        if (!recognition) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                console.log('🎙️ Reconocimiento de voz iniciado...');
+                micButton.textContent = '⬛'; // Indicador de grabando
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                console.log('Texto reconocido:', transcript);
+                userInput.value = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Error en reconocimiento de voz:', event.error);
+                alert('Error en reconocimiento de voz: ' + event.error);
+            };
+
+            recognition.onend = () => {
+                console.log('🎤 Reconocimiento de voz finalizado.');
+                micButton.textContent = '🎤';
+                escuchando = false;
+            };
+        }
+
+        if (!escuchando) {
+            recognition.start();
+            escuchando = true;
+        } else {
+            recognition.stop();
+            escuchando = false;
+            micButton.textContent = '🎤';
+        }
+    }
+
+    // Eventos
+    if (sendButton) sendButton.addEventListener('click', sendMessage);
+    if (userInput) userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    if (nuevaConversacionBtn) nuevaConversacionBtn.addEventListener('click', crearNuevaConversacion);
+    if (exportButton) exportButton.addEventListener('click', exportChatToPDF);
+    if (subirBtn) subirBtn.addEventListener('click', uploadFiles);
+    if (archivoInput) archivoInput.addEventListener('change', (e) => {
+        selectedFiles = e.target.files;
+        const previewList = document.getElementById('file-preview-list');
+        if (previewList) {
+            previewList.innerHTML = '';
+            Array.from(selectedFiles).forEach(file => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                previewList.appendChild(li);
             });
-        });
-    }
+        }
+    });
+    if (toggleButton) toggleButton.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        toggleButton.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    });
+    if (micButton) micButton.addEventListener('click', toggleReconocimientoVoz);
 
-    if (localStorage.getItem('tema') === 'oscuro') {
-        document.body.classList.add('dark-mode');
-        if (toggleButton) toggleButton.textContent = '☀️';
-    }
-
-    if (toggleButton) {
-        toggleButton.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            toggleButton.textContent = isDark ? '☀️' : '🌙';
-            localStorage.setItem('tema', isDark ? 'oscuro' : 'claro');
-        });
-    }
+    loadUploadedFiles();
 });

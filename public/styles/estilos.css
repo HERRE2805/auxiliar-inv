@@ -1,7 +1,7 @@
 :root {
-    --primary: #004A8F;
-    --primary-dark: #003366;
-    --primary-light: #0066CC;
+    --primary: #D32F2F;
+    --primary-dark: #B71C1C;
+    --primary-light: #F44336;
     --accent: #F39C12;
     --background: #F5F7FA;
     --text-dark: #2C3E50;
@@ -266,4 +266,61 @@ body.dark-mode header .subtitulo {
 body.dark-mode code {
     background-color: #444;
     color: #ffcc00;
+}
+
+#mic-button {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s ease, transform 0.12s ease;
+}
+
+#mic-button:active {
+    transform: scale(0.98);
+}
+
+#mic-button.active {
+    background: var(--primary-dark);
+    animation: mic-pulse 1.2s infinite;
+}
+
+@keyframes mic-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(211,47,47,0.35);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(211,47,47,0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(211,47,47,0);
+    }
+}
+
+#mic-button.listening {
+    color: red; 
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+
+@media (max-width: 480px) {
+    #mic-button {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+    }
 }
