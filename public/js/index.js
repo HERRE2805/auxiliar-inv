@@ -10,20 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const subirBtn = document.getElementById('subir-archivo');
     const archivoInput = document.getElementById('archivo-input');
     const toggleButton = document.getElementById('toggle-theme');
-    const micButton = document.getElementById('mic-button'); // 🎤 Botón de micrófono
+    const micButton = document.getElementById('mic-button');
 
-    // Verificar elementos esenciales
     if (!chatBody) console.error('Error: #chat-body no encontrado en el DOM');
     if (!userInput) console.error('Error: #user-input no encontrado en el DOM');
     if (!sendButton) console.error('Error: #send-button no encontrado en el DOM');
     if (!nuevaConversacionBtn) console.error('Error: #nueva-conversacion no encontrado en el DOM');
     if (!historialLista) console.error('Error: #historial-lista no encontrado en el DOM');
 
-    // Verificar dependencias
     if (!window.marked) console.error('Error: marked no está cargado. Asegúrate de incluir <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/lib/marked.min.js"></script> en index.html');
     if (!window.DOMPurify) console.error('Error: DOMPurify no está cargado. Asegúrate de incluir <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script> en index.html');
 
-    // Configurar marked explícitamente
     if (window.marked) {
         window.marked.setOptions({
             gfm: true,
@@ -395,26 +392,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function exportChatToPDF() {
-        console.log('Exportando chat a PDF...');
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        async function exportChatToPDF() {
+    console.log('📄 Exportando chat a PDF con formato visual...');
 
-        let y = 10;
-        doc.setFontSize(12);
-        historial.forEach(mensaje => {
-            const text = `${mensaje.hora} - ${mensaje.origen}: ${mensaje.texto.replace(/\\_/g, '_')}`;
-            const splitText = doc.splitTextToSize(text, 180);
-            doc.text(splitText, 10, y);
-            y += splitText.length * 10;
-            if (y > 280) {
-                doc.addPage();
-                y = 10;
-            }
-        });
-
-        doc.save('chat.pdf');
+    const chatBody = document.getElementById('chat-body');
+    if (!chatBody || chatBody.children.length === 0) {
+        alert('No hay mensajes para exportar.');
+        return;
     }
+
+    const chatClone = chatBody.cloneNode(true);
+
+    chatClone.style.background = getComputedStyle(document.body).backgroundColor;
+    chatClone.style.padding = '20px';
+    chatClone.style.width = '800px';
+    chatClone.style.maxWidth = '100%';
+
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.appendChild(chatClone);
+    document.body.appendChild(container);
+
+    try {
+        const canvas = await html2canvas(chatClone, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+
+            pdf.save('Conversacion_Asistente_Juridico.pdf');
+            console.log('✅ PDF exportado correctamente.');
+        } catch (error) {
+            console.error('❌ Error al exportar PDF:', error);
+            alert('Ocurrió un error al exportar el PDF.');
+        } finally {
+            container.remove();
+        }
+    }
+
 
     function uploadFiles() {
         console.log('Subiendo archivos seleccionados...');
@@ -461,7 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (previewList) previewList.innerHTML = '';
     }
 
-    // 🎤 Reconocimiento de voz con toggle
     let recognition;
     let escuchando = false;
 
@@ -480,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             recognition.onstart = () => {
                 console.log('🎙️ Reconocimiento de voz iniciado...');
-                micButton.textContent = '⬛'; // Indicador de grabando
+                micButton.textContent = '⬛';
             };
 
             recognition.onresult = (event) => {
