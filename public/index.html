@@ -13,20 +13,28 @@
         <aside class="sidebar">
             <h2>📂 Conversaciones</h2>
             
-            <label for="archivo-input" class="file-label">📁 Seleccionar archivos</label>
+            <label for="archivo-input" class="file-label">Seleccionar archivos</label>
             <input type="file" id="archivo-input" multiple accept=".pdf,.doc,.docx,.txt">
+
             <div class="file-preview">
                 <h3>Archivos seleccionados</h3>
                 <ul id="file-preview-list"></ul>
             </div>
-            <button id="subir-archivo" class="secondary-button">📤 Subir archivos</button>
+
+            <button id="subir-archivo" class="secondary-button">Subir y procesar archivos</button>
+            <div id="mensajeEstadoArchivos" class="mt-2 text-center" style="font-size: 14px;"></div>
+
+            <div id="progreso-embeddings" class="progress-container" style="display:none;">
+                <p>Procesando documentos...</p>
+                <div class="progress-bar"><div id="progress-fill"></div></div>
+            </div>
+
             <div class="uploaded-files">
-                <h3>Archivos subidos</h3>
+                <h3>Archivos indexados</h3>
                 <ul id="uploaded-files-list"></ul>
             </div>
             
-            <button id="nueva-conversacion">➕ Nueva conversación</button>
-            
+            <button id="nueva-conversacion">Nueva conversación</button>
             <ul id="historial-lista"></ul>
         </aside>
 
@@ -52,65 +60,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/index.js"></script>
-    <script src="js/flotante.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Jurídico</title>
-    <link rel="stylesheet" href="styles/estilos.css">
-    <link rel="stylesheet" href="styles/slidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <div class="main-container">
-        <aside class="sidebar">
-            <h2>📂 Conversaciones</h2>
-            
-            <label for="archivo-input" class="file-label">📁 Seleccionar archivos</label>
-            <input type="file" id="archivo-input" multiple accept=".pdf,.doc,.docx,.txt">
-            <div class="file-preview">
-                <h3>Archivos seleccionados</h3>
-                <ul id="file-preview-list"></ul>
-            </div>
-            <button id="subir-archivo" class="secondary-button">📤 Subir archivos</button>
-            <div class="uploaded-files">
-                <h3>Archivos subidos</h3>
-                <ul id="uploaded-files-list"></ul>
-            </div>
-            
-            <button id="nueva-conversacion">➕ Nueva conversación</button>
-            
-            <ul id="historial-lista"></ul>
-        </aside>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.1/mammoth.browser.min.js"></script>
 
-        <div class="chat-container">
-            <header>
-                <button id="toggle-theme" title="Cambiar tema">🌙</button>
-                <h1>Asistente Jurídico Virtual</h1>
-                <p class="subtitulo">Consulta profesional en lenguaje legal</p>
-            </header>
-            
-            <div id="chat-body" class="chat-body"></div>
-            
-            <div class="input-container">
-                <input type="text" id="user-input" placeholder="Escribe tu consulta legal...">
-                <button id="mic-button" title="Presionar para hablar" type="button">🎤</button>
-                <button id="send-button">Enviar</button>
-                <button id="export-button">📄 Exportar PDF</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/fileReader.js"></script>
     <script src="js/index.js"></script>
     <script src="js/flotante.js"></script>
 </body>
 </html>
-

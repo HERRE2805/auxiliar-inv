@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM cargado, inicializando aplicación...');
+    console.log('🚀 DOM cargado, inicializando JurisLibre...');
 
     const chatBody = document.getElementById('chat-body');
     const userInput = document.getElementById('user-input');
@@ -12,75 +12,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleButton = document.getElementById('toggle-theme');
     const micButton = document.getElementById('mic-button');
 
-    if (!chatBody) console.error('Error: #chat-body no encontrado en el DOM');
-    if (!userInput) console.error('Error: #user-input no encontrado en el DOM');
-    if (!sendButton) console.error('Error: #send-button no encontrado en el DOM');
-    if (!nuevaConversacionBtn) console.error('Error: #nueva-conversacion no encontrado en el DOM');
-    if (!historialLista) console.error('Error: #historial-lista no encontrado en el DOM');
+    const statusContainer = document.createElement('div');
+    statusContainer.id = 'upload-status';
+    subirBtn.insertAdjacentElement('afterend', statusContainer);
 
-    if (!window.marked) console.error('Error: marked no está cargado. Asegúrate de incluir <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/lib/marked.min.js"></script> en index.html');
-    if (!window.DOMPurify) console.error('Error: DOMPurify no está cargado. Asegúrate de incluir <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script> en index.html');
-
-    if (window.marked) {
-        window.marked.setOptions({
-            gfm: true,
-            breaks: true,
-            pedantic: false,
-            smartLists: true,
-            smartypants: true
-        });
-        console.log('marked configurado con opciones GFM');
+    if (!window.marked || !window.DOMPurify) {
+        console.error('Faltan dependencias: marked o DOMPurify');
+    } else {
+        window.marked.setOptions({ gfm: true, breaks: true });
     }
 
-    const API_KEY = 'API_KEY';
-
+    const API_KEY = "API_KEY";
     let historial = [];
     let conversaciones = [];
-    let chatCounter = 0;
     let currentConversationIndex = -1;
     let selectedFiles = [];
+    let documentosLocales = [];
 
+    // Restaurar tema guardado
+    const temaGuardado = localStorage.getItem('tema');
+    if (temaGuardado === 'oscuro') {
+        document.body.classList.add('dark-mode');
+        toggleButton.textContent = '☀️';
+    }
+
+    // Restaurar documentos guardados solo si se recarga la pestaña
+    const documentosGuardados = sessionStorage.getItem('documentosLocales');
+    if (documentosGuardados) {
+        documentosLocales = JSON.parse(documentosGuardados);
+        const uploadedList = document.getElementById('uploaded-files-list');
+        if (uploadedList) {
+            uploadedList.innerHTML = '';
+            documentosLocales.forEach(doc => {
+                const li = document.createElement('li');
+                li.textContent = doc.nombre;
+                uploadedList.appendChild(li);
+            });
+        }
+        console.log('Archivos restaurados desde sesión:', documentosLocales.map(d => d.nombre));
+    }
+
+    // Borrar documentos solo al cerrar la ventana (no al recargar)
+    window.addEventListener('beforeunload', (e) => {
+        if (!window.performance.navigation || window.performance.navigation.type === 0) {
+            sessionStorage.removeItem('documentosLocales');
+        }
+    });
+
+    // Cargar historial/conversaciones previas
     cargarHistorial();
 
-    async function filterRelevantFiles(query, files) {
-        console.log('Filtrando archivos relevantes para la consulta:', query);
-        if (!files || files.length === 0) {
-            console.log('No hay archivos subidos para filtrar');
+    // Integración con el lector de archivos avanzado
+    async function procesarArchivosSeleccionados(archivos) {
+        try {
+            const resultados = await FileReaderHelper.procesarArchivos(archivos);
+            return resultados.map(r => ({
+                nombre: r.nombre,
+                contenido: r.contenido.substring(0, 10000)
+            }));
+        } catch (error) {
+            console.error('Error al procesar archivos:', error);
             return [];
         }
+    }
 
-        const casualGreetings = ['hola', 'hello', 'hey', 'saludos', 'hi'];
-        if (casualGreetings.some(greeting => query.toLowerCase().includes(greeting))) {
-            console.log('Consulta casual detectada, no se mostrarán fuentes');
-            return [];
+    async function uploadFiles() {
+        console.log('Cargando archivos localmente...');
+        const previewList = document.getElementById('file-preview-list');
+        if (!selectedFiles.length) {
+            statusContainer.innerHTML = '<span style="color:#c0392b;">No hay archivos seleccionados</span>';
+            return;
         }
 
-        const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
-        const relevantFiles = files.filter(file => {
-            const filename = file.filename.toLowerCase();
-            return keywords.some(keyword => filename.includes(keyword));
-        }).slice(0, 3);
+        documentosLocales = await procesarArchivosSeleccionados(selectedFiles);
 
-        const uniqueFiles = Array.from(new Set(relevantFiles.map(f => f.id)))
-            .map(id => relevantFiles.find(f => f.id === id));
+        if (previewList) {
+            previewList.innerHTML = '';
+            documentosLocales.forEach(doc => {
+                const li = document.createElement('li');
+                li.textContent = doc.nombre;
+                previewList.appendChild(li);
+            });
+        }
 
-        console.log('Archivos relevantes encontrados:', uniqueFiles.map(f => f.filename));
-        return uniqueFiles;
+        sessionStorage.setItem('documentosLocales', JSON.stringify(documentosLocales));
+        console.log('Archivos procesados localmente:', documentosLocales.map(d => d.nombre));
+        statusContainer.innerHTML = `<span style="color:green;">${documentosLocales.length} archivo(s) procesado(s) correctamente.</span>`;
+        selectedFiles = [];
     }
 
     async function sendMessage() {
         const userMessage = userInput.value.trim();
         if (userMessage === '') return;
 
-        console.log('Enviando mensaje del usuario:', userMessage);
-
-        try {
-            await agregarMensaje('Usuario', userMessage, 'user.png');
-        } catch (error) {
-            console.error('Error al agregar mensaje del usuario:', error);
-            return;
-        }
-
+        await agregarMensaje('Usuario', userMessage, 'user.png');
         userInput.value = '';
 
         const loadingMessage = document.createElement('div');
@@ -89,44 +114,27 @@ document.addEventListener('DOMContentLoaded', () => {
             <img src="imagenes/bot.png" alt="Bot">
             <span><em>Escribiendo...</em></span>
         `;
-        if (chatBody) {
-            chatBody.appendChild(loadingMessage);
-            chatBody.scrollTop = chatBody.scrollHeight;
-        } else {
-            console.error('Error: chatBody no está definido');
-            return;
-        }
+        chatBody.appendChild(loadingMessage);
+        chatBody.scrollTop = chatBody.scrollHeight;
 
         try {
-            console.log('Obteniendo lista de archivos subidos...');
-            let files = [];
-            let fileIds = [];
-            try {
-                const filesResponse = await fetch('https://api.openai.com/v1/files', {
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`
-                    }
-                });
-                if (filesResponse.ok) {
-                    const filesData = await filesResponse.json();
-                    files = filesData.data.filter(file => file.purpose === 'assistants');
-                    console.log('Archivos subidos:', files.map(f => f.filename));
-                    const relevantFiles = await filterRelevantFiles(userMessage, files);
-                    fileIds = relevantFiles.map(file => file.id);
-                } else {
-                    const errorData = await filesResponse.json();
-                    console.error(`Error al obtener archivos: ${filesResponse.status} ${filesResponse.statusText} - ${JSON.stringify(errorData)}`);
-                }
-            } catch (error) {
-                console.error('Error al cargar archivos:', error);
+            let contextoDocumentos = '';
+
+            if (documentosLocales.length > 0) {
+                const relevantes = documentosLocales.filter(doc =>
+                    userMessage.toLowerCase().includes(doc.nombre.split('.')[0].toLowerCase())
+                );
+
+                const docsAIncluir = relevantes.length ? relevantes : documentosLocales.slice(0, 2);
+                contextoDocumentos = docsAIncluir.map(doc =>
+                    `[Documento: ${doc.nombre}]\n${doc.contenido.substring(0, 3000)}`
+                ).join('\n---\n');
             }
 
-            const isCasualGreeting = ['hola', 'hello', 'hey', 'saludos', 'hi'].some(greeting => userMessage.toLowerCase().includes(greeting));
-            const systemPrompt = isCasualGreeting
-                ? 'Eres JurisLibre, un asistente jurídico amigable. Responde de manera breve y cordial a saludos casuales.'
-                : 'Eres JurisLibre, un asistente jurídico profesional. Responde con formalidad, claridad y lenguaje técnico o legal. Usa exclusivamente Markdown.';
+            const systemPrompt = documentosLocales.length > 0
+                ? 'Eres JurisLibre, un asistente jurídico experto. Usa los documentos adjuntos solo si son relevantes. Si no hay información suficiente, dilo claramente.'
+                : 'Eres JurisLibre, un asistente jurídico experto. Si no hay documentos relevantes, responde sin inventar información.';
 
-            console.log('Enviando mensaje a chat/completions con prompt:', systemPrompt);
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -134,425 +142,221 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Authorization': `Bearer ${API_KEY}`
                 },
                 body: JSON.stringify({
-                    model: 'gpt-3.5-turbo',
+                    model: 'gpt-4-turbo',
                     messages: [
                         { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userMessage }
+                        { role: 'user', content: userMessage + (contextoDocumentos ? `\n\nContexto:\n${contextoDocumentos}` : '') }
                     ],
-                    temperature: 0.7
+                    temperature: 0.6
                 })
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`Error al enviar mensaje: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-            }
+
+            if (!response.ok) throw new Error(`Error ${response.status}`);
             const data = await response.json();
-            const reply = data.choices[0].message.content;
+            let reply = data.choices[0].message.content || 'No se pudo generar respuesta.';
 
-            console.log('Respuesta cruda de la API:', reply);
+            // Detección de fuentes relevantes basada en coincidencia de nombre o contenido
+            const fuentesUsadas = documentosLocales
+                .filter(doc => {
+                    const nombreCoincide = reply.toLowerCase().includes(doc.nombre.toLowerCase());
+                    const contextoCoincide = reply.toLowerCase().includes(doc.contenido.substring(0, 200).toLowerCase());
+                    return nombreCoincide || contextoCoincide;
+                })
+                .map(doc => doc.nombre);
 
-            const cleanedReply = reply.replace(/\\_/g, '_');
+            // Solo mostrar fuentes cuando realmente se usaron
+            if (fuentesUsadas.length > 0) {
+                reply += `\n\n📄 <em>Fuente${fuentesUsadas.length > 1 ? 's' : ''}: ${fuentesUsadas.join(', ')}</em>`;
+            }
 
             loadingMessage.remove();
-            await agregarMensaje('JurisLibre', cleanedReply, 'bot.png', fileIds.length > 0 ? fileIds : []);
+            await agregarMensaje('JurisLibre', reply, 'bot.png');
         } catch (error) {
-            console.error('Error en sendMessage:', error);
+            console.error('Error al procesar mensaje:', error);
             loadingMessage.querySelector('span').innerHTML = `Error: ${error.message}`;
         }
     }
 
-    async function agregarMensaje(origen, texto, imagen, fileIds = []) {
-        console.log(`Agregando mensaje: ${origen}: ${texto}`);
+    // Mostrar mensaje
+    async function agregarMensaje(origen, texto, imagen) {
         const hora = new Date().toLocaleTimeString();
-        let sourcesHTML = '';
-
-        if (fileIds.length > 0) {
-            try {
-                const nombres = await Promise.all(fileIds.map(async (fileId) => {
-                    try {
-                        const res = await fetch(`https://api.openai.com/v1/files/${fileId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${API_KEY}`
-                            }
-                        });
-                        if (!res.ok) return fileId;
-                        const data = await res.json();
-                        return (data.filename || fileId).replace(/^_+|_+$/g, '');
-                    } catch {
-                        return fileId;
-                    }
-                }));
-
-                sourcesHTML = `
-                    <div class="message-sources">
-                        <p>📄 Basado en:</p>
-                        <ul>
-                            ${nombres.map((nombre, index) => `
-                                <li class="${index >= 3 ? 'hidden' : ''}">${nombre}</li>
-                            `).join('')}
-                        </ul>
-                        ${nombres.length > 3 ? '<span class="show-more">Ver más</span>' : ''}
-                    </div>
-                `;
-            } catch {
-                sourcesHTML = '<div class="message-sources"><p>Error al cargar fuentes.</p></div>';
-            }
-        }
-
         let formattedText = texto;
+
         try {
             if (window.marked && window.DOMPurify) {
                 formattedText = window.DOMPurify.sanitize(window.marked.parse(texto));
-            } else {
-                formattedText = texto.replace(/\\_/g, '_');
             }
         } catch {
-            formattedText = texto.replace(/\\_/g, '_');
+            formattedText = texto;
         }
 
         const mensaje = document.createElement('div');
         mensaje.classList.add('message');
         mensaje.innerHTML = `
             <img src="imagenes/${imagen}" alt="${origen}">
-            <span><strong>${origen}:</strong> ${formattedText}${sourcesHTML}</span>
+            <span><strong>${origen}:</strong> ${formattedText}</span>
         `;
-        if (chatBody) {
-            chatBody.appendChild(mensaje);
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
-
-        if (fileIds.length > 3) {
-            const showMore = mensaje.querySelector('.show-more');
-            if (showMore) {
-                showMore.addEventListener('click', () => {
-                    mensaje.querySelectorAll('.message-sources li.hidden')
-                        .forEach(item => item.classList.remove('hidden'));
-                    showMore.remove();
-                });
-            }
-        }
+        chatBody.appendChild(mensaje);
+        chatBody.scrollTop = chatBody.scrollHeight;
 
         historial.push({ origen, texto, hora });
-
         if (currentConversationIndex >= 0 && conversaciones[currentConversationIndex]) {
             conversaciones[currentConversationIndex].mensajes = [...historial];
             localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
         }
-
         localStorage.setItem('historial', JSON.stringify(historial));
     }
 
-    async function loadUploadedFiles() {
-        console.log('Cargando archivos subidos...');
-        const uploadedFilesList = document.getElementById('uploaded-files-list');
-        if (!uploadedFilesList) return;
-        uploadedFilesList.innerHTML = '';
+    // Exportar chat a PDF
+    async function exportChatToPDF() {
+        console.log('📄 Exportando PDF...');
+        if (!chatBody || chatBody.children.length === 0) {
+            alert('No hay mensajes para exportar.');
+            return;
+        }
+
+        // Crear clon invisible del chat
+        const chatClone = chatBody.cloneNode(true);
+        chatClone.style.background = getComputedStyle(document.body).backgroundColor;
+        chatClone.style.padding = '20px';
+        chatClone.style.width = '800px';
+        chatClone.style.maxHeight = 'none';
+        chatClone.style.overflow = 'visible';
+
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.appendChild(chatClone);
+        document.body.appendChild(container);
 
         try {
-            const response = await fetch('https://api.openai.com/v1/files', {
-                headers: { 'Authorization': `Bearer ${API_KEY}` }
-            });
-            if (!response.ok) return;
-            const data = await response.json();
-            const files = data.data.filter(file => file.purpose === 'assistants');
-            files.forEach((file, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span class="file-order">${index + 1}</span>
-                    <span class="file-name">${file.filename.replace(/^_+|_+$/g, '')}</span>
-                `;
-                uploadedFilesList.appendChild(li);
-            });
-        } catch (error) {
-            console.error('Error al cargar archivos subidos:', error);
-        }
-    }
+            // Capturar imagen del chat
+            const canvas = await html2canvas(chatClone, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
 
-    function cargarHistorial() {
-        console.log('Cargando historial y conversaciones...');
-        try {
-            const datosConversaciones = localStorage.getItem('conversaciones');
-            if (datosConversaciones) {
-                conversaciones = JSON.parse(datosConversaciones).filter(conv => conv?.mensajes?.length);
-                chatCounter = conversaciones.length;
-            }
-        } catch {
-            conversaciones = [];
-            chatCounter = 0;
-        }
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
 
-        try {
-            const datosHistorial = localStorage.getItem('historial');
-            if (datosHistorial) historial = JSON.parse(datosHistorial);
-        } catch {
-            historial = [];
-        }
+            // Dimensiones A4 en mm
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
 
-        if (conversaciones.length === 0) {
-            chatCounter = 1;
-            conversaciones.push({ id: chatCounter, mensajes: [] });
-            currentConversationIndex = 0;
-            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-        }
+            // Calcular proporciones
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        if (historialLista) {
-            historialLista.innerHTML = '';
-            conversaciones.forEach((conv, index) => {
-                const item = document.createElement('li');
-                item.textContent = `Conversación ${conv.id}`;
-                item.classList.add('conversacion-item');
-                item.dataset.index = index;
-                item.addEventListener('click', () => {
-                    if (currentConversationIndex >= 0) {
-                        conversaciones[currentConversationIndex].mensajes = [...historial];
-                        localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-                    }
-                    currentConversationIndex = index;
-                    historial = [...conversaciones[index].mensajes];
-                    localStorage.setItem('historial', JSON.stringify(historial));
+            let heightLeft = imgHeight;
+            let position = 0;
 
-                    if (chatBody) {
-                        chatBody.innerHTML = '';
-                        historial.forEach(m => {
-                            const mensaje = document.createElement('div');
-                            mensaje.classList.add('message');
-                            let formattedText = m.texto;
-                            try {
-                                if (window.marked && window.DOMPurify) {
-                                    formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
-                                }
-                            } catch {
-                                formattedText = m.texto.replace(/\\_/g, '_');
-                            }
-                            mensaje.innerHTML = `
-                                <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
-                                <span><strong>${m.origen}:</strong> ${formattedText}</span>
-                            `;
-                            chatBody.appendChild(mensaje);
-                        });
-                        chatBody.scrollTop = chatBody.scrollHeight;
-                    }
-                });
-                historialLista.appendChild(item);
-            });
-        }
-    }
-
-    function crearNuevaConversacion() {
-        if (currentConversationIndex >= 0) {
-            conversaciones[currentConversationIndex].mensajes = [...historial];
-            localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-        }
-
-        chatCounter++;
-        const nuevaConversacion = { id: chatCounter, mensajes: [] };
-        conversaciones.push(nuevaConversacion);
-        currentConversationIndex = conversaciones.length - 1;
-        historial = [];
-        localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
-        localStorage.setItem('chatCounter', chatCounter);
-        localStorage.setItem('currentConversationIndex', currentConversationIndex);
-        localStorage.setItem('historial', JSON.stringify(historial));
-
-        if (chatBody) chatBody.innerHTML = '';
-
-        if (historialLista) {
-            const item = document.createElement('li');
-            item.textContent = `Conversación ${nuevaConversacion.id}`;
-            item.classList.add('conversacion-item');
-            item.dataset.index = currentConversationIndex;
-            item.addEventListener('click', () => {
-                currentConversationIndex = parseInt(item.dataset.index);
-                historial = [...conversaciones[currentConversationIndex].mensajes];
-                localStorage.setItem('historial', JSON.stringify(historial));
-
-                if (chatBody) {
-                    chatBody.innerHTML = '';
-                    historial.forEach(m => {
-                        const mensaje = document.createElement('div');
-                        mensaje.classList.add('message');
-                        let formattedText = m.texto;
-                        try {
-                            if (window.marked && window.DOMPurify) {
-                                formattedText = window.DOMPurify.sanitize(window.marked.parse(m.texto));
-                            }
-                        } catch {
-                            formattedText = m.texto.replace(/\\_/g, '_');
-                        }
-                        mensaje.innerHTML = `
-                            <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
-                            <span><strong>${m.origen}:</strong> ${formattedText}</span>
-                        `;
-                        chatBody.appendChild(mensaje);
-                    });
-                    chatBody.scrollTop = chatBody.scrollHeight;
-                }
-            });
-            historialLista.appendChild(item);
-        }
-    }
-
-        async function exportChatToPDF() {
-    console.log('📄 Exportando chat a PDF con formato visual...');
-
-    const chatBody = document.getElementById('chat-body');
-    if (!chatBody || chatBody.children.length === 0) {
-        alert('No hay mensajes para exportar.');
-        return;
-    }
-
-    const chatClone = chatBody.cloneNode(true);
-
-    chatClone.style.background = getComputedStyle(document.body).backgroundColor;
-    chatClone.style.padding = '20px';
-    chatClone.style.width = '800px';
-    chatClone.style.maxWidth = '100%';
-
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.appendChild(chatClone);
-    document.body.appendChild(container);
-
-    try {
-        const canvas = await html2canvas(chatClone, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
+            // Añadir todas las páginas necesarias
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
             heightLeft -= pageHeight;
-        }
 
-            pdf.save('Conversacion_Asistente_Juridico.pdf');
-            console.log('✅ PDF exportado correctamente.');
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save('Conversacion_JurisLibre.pdf');
+            console.log('PDF exportado correctamente.');
         } catch (error) {
-            console.error('❌ Error al exportar PDF:', error);
-            alert('Ocurrió un error al exportar el PDF.');
+            console.error('Error al exportar PDF:', error);
+            alert('Error al exportar el PDF. Revisa la consola para más detalles.');
         } finally {
             container.remove();
         }
     }
 
 
-    function uploadFiles() {
-        console.log('Subiendo archivos seleccionados...');
-        const previewList = document.getElementById('file-preview-list');
-        if (!selectedFiles || selectedFiles.length === 0) {
-            console.warn('No hay archivos seleccionados para subir');
-            return;
+    // Historial
+    function cargarHistorial() {
+        try {
+            const datosConversaciones = localStorage.getItem('conversaciones');
+            if (datosConversaciones) conversaciones = JSON.parse(datosConversaciones).filter(c => c.mensajes?.length);
+        } catch {
+            conversaciones = [];
         }
-
-        Array.from(selectedFiles).forEach(async (file, index) => {
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('purpose', 'assistants');
-
-                console.log(`Subiendo archivo ${index + 1}: ${file.name}`);
-
-                const response = await fetch('https://api.openai.com/v1/files', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`
-                    },
-                    body: formData
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`Error al subir archivo ${file.name}: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
-                }
-                const data = await response.json();
-                console.log(`Archivo ${file.name} subido con ID: ${data.id}`);
-
-                const li = document.createElement('li');
-                li.textContent = file.name;
-                if (previewList) {
-                    previewList.appendChild(li);
-                }
-
-                loadUploadedFiles();
-            } catch (error) {
-                console.error(`Error al subir archivo ${file.name}:`, error);
-            }
-        });
-        selectedFiles = [];
-        if (previewList) previewList.innerHTML = '';
+        if (conversaciones.length === 0) {
+            conversaciones.push({ id: 1, mensajes: [] });
+            currentConversationIndex = 0;
+        }
+        renderizarConversaciones();
     }
 
+    function renderizarConversaciones() {
+        historialLista.innerHTML = '';
+        conversaciones.forEach((conv, index) => {
+            const item = document.createElement('li');
+            item.textContent = `Conversación ${conv.id}`;
+            item.classList.add('conversacion-item');
+            item.dataset.index = index;
+            item.addEventListener('click', () => cambiarConversacion(index));
+            historialLista.appendChild(item);
+        });
+    }
+
+    function cambiarConversacion(index) {
+        if (currentConversationIndex >= 0)
+            conversaciones[currentConversationIndex].mensajes = [...historial];
+        currentConversationIndex = index;
+        historial = [...conversaciones[index].mensajes];
+        chatBody.innerHTML = '';
+        historial.forEach(m => {
+            const msg = document.createElement('div');
+            msg.classList.add('message');
+            msg.innerHTML = `
+                <img src="imagenes/${m.origen === 'Usuario' ? 'user.png' : 'bot.png'}" alt="${m.origen}">
+                <span><strong>${m.origen}:</strong> ${m.texto}</span>
+            `;
+            chatBody.appendChild(msg);
+        });
+    }
+
+    // Nueva conversación
+    nuevaConversacionBtn.addEventListener('click', () => {
+        const nueva = { id: conversaciones.length + 1, mensajes: [] };
+        conversaciones.push(nueva);
+        currentConversationIndex = conversaciones.length - 1;
+        historial = [];
+        chatBody.innerHTML = '';
+        localStorage.setItem('conversaciones', JSON.stringify(conversaciones));
+        renderizarConversaciones();
+    });
+
+    // Reconocimiento de voz
     let recognition;
     let escuchando = false;
-
     function toggleReconocimientoVoz() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
             alert('Tu navegador no soporta reconocimiento de voz.');
             return;
         }
-
         if (!recognition) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.lang = 'es-ES';
             recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = () => {
-                console.log('🎙️ Reconocimiento de voz iniciado...');
-                micButton.textContent = '⬛';
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                console.log('Texto reconocido:', transcript);
-                userInput.value = transcript;
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Error en reconocimiento de voz:', event.error);
-                alert('Error en reconocimiento de voz: ' + event.error);
-            };
-
-            recognition.onend = () => {
-                console.log('🎤 Reconocimiento de voz finalizado.');
-                micButton.textContent = '🎤';
-                escuchando = false;
-            };
+            recognition.onstart = () => micButton.textContent = '⬛';
+            recognition.onresult = e => userInput.value = e.results[0][0].transcript;
+            recognition.onend = () => { micButton.textContent = '🎤'; escuchando = false; };
         }
-
         if (!escuchando) {
             recognition.start();
             escuchando = true;
         } else {
             recognition.stop();
             escuchando = false;
-            micButton.textContent = '🎤';
         }
     }
 
     // Eventos
-    if (sendButton) sendButton.addEventListener('click', sendMessage);
-    if (userInput) userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-    });
-    if (nuevaConversacionBtn) nuevaConversacionBtn.addEventListener('click', crearNuevaConversacion);
-    if (exportButton) exportButton.addEventListener('click', exportChatToPDF);
-    if (subirBtn) subirBtn.addEventListener('click', uploadFiles);
-    if (archivoInput) archivoInput.addEventListener('change', (e) => {
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    exportButton.addEventListener('click', exportChatToPDF);
+    subirBtn.addEventListener('click', uploadFiles);
+    archivoInput.addEventListener('change', e => {
         selectedFiles = e.target.files;
         const previewList = document.getElementById('file-preview-list');
         if (previewList) {
@@ -564,11 +368,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-    if (toggleButton) toggleButton.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        toggleButton.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    toggleButton.addEventListener('click', () => {
+        const esOscuro = document.body.classList.toggle('dark-mode');
+        toggleButton.textContent = esOscuro ? '☀️' : '🌙';
+        localStorage.setItem('tema', esOscuro ? 'oscuro' : 'claro');
     });
-    if (micButton) micButton.addEventListener('click', toggleReconocimientoVoz);
-
-    loadUploadedFiles();
+    micButton.addEventListener('click', toggleReconocimientoVoz);
 });
